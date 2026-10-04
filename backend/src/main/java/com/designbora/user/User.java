@@ -18,7 +18,7 @@ import java.util.List;
 @Table(name = "users")
 @JsonIgnoreProperties(value = {"passwordHash", "password", "authorities", "username",
         "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled",
-        "hibernateLazyInitializer", "handler"}, allowSetters = true)
+        "hibernateLazyInitializer", "handler", "totpSecret", "totpLastStep"}, allowSetters = true)
 @Data
 @Builder
 @NoArgsConstructor
@@ -47,6 +47,16 @@ public class User implements UserDetails {
 
     @Column(name = "avatar_url", length = 255)
     private String avatarUrl;
+
+    /** 2FA (admin): siri ya TOTP, kama imewashwa, na hatua ya mwisho iliyotumika */
+    @Column(name = "totp_secret", length = 64)
+    private String totpSecret;
+
+    @Column(name = "totp_enabled")
+    private Boolean totpEnabled;
+
+    @Column(name = "totp_last_step")
+    private Long totpLastStep;
 
     @Builder.Default
     private boolean active = true;

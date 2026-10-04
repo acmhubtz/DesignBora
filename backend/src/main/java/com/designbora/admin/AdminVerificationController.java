@@ -27,6 +27,7 @@ public class AdminVerificationController {
 
     private final DesignerProfileRepository designerProfileRepository;
     private final VerificationDocumentRepository documentRepository;
+    private final AdminAuditService auditService;
 
     public record DocumentItem(Long id, String documentType, String status,
                                LocalDateTime uploadedAt, String extension) {
@@ -77,6 +78,8 @@ public class AdminVerificationController {
         designer.setVerificationNote(null);
         designerProfileRepository.save(designer);
         updatePendingDocuments(designer, DocumentStatus.APPROVED);
+        auditService.record("DESIGNER_APPROVED", "DESIGNER", designer.getId(),
+                designer.getUser() == null ? null : designer.getUser().getFullName());
         return ApiResponse.ok("Mbunifu ameidhinishwa", toItem(designer));
     }
 
@@ -91,6 +94,7 @@ public class AdminVerificationController {
         designer.setVerificationNote(reason.length() > 500 ? reason.substring(0, 500) : reason);
         designerProfileRepository.save(designer);
         updatePendingDocuments(designer, DocumentStatus.REJECTED);
+        auditService.record("DESIGNER_REJECTED", "DESIGNER", designer.getId(), reason);
         return ApiResponse.ok("Mbunifu amekataliwa", toItem(designer));
     }
 

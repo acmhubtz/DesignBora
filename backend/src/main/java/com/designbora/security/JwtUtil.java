@@ -42,6 +42,21 @@ public class JwtUtil {
                 .compact();
     }
 
+    /** Token yenye muda maalum (mfano: admin - saa 8) */
+    public String generateToken(Long userId, String phone, String role, long customExpirationMs) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("uid", userId);
+        claims.put("role", role);
+        Date now = new Date();
+        return Jwts.builder()
+                .claims(claims)
+                .subject(phone)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + customExpirationMs))
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     public Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(key)

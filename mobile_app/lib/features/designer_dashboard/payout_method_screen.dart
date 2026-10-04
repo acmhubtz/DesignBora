@@ -58,8 +58,9 @@ class _PayoutMethodScreenState extends State<PayoutMethodScreen> {
       if (!mounted) return;
       setState(() {
         _banks = banks;
-        if (_selectedBic != null && !banks.any((b) => b.bic == _selectedBic))
+        if (_selectedBic != null && !banks.any((b) => b.bic == _selectedBic)) {
           _selectedBic = null;
+        }
         _loadingBanks = false;
       });
     } catch (e) {

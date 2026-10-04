@@ -13,6 +13,7 @@ import com.designbora.user.dto.AuthDtos.LoginRequest;
 import com.designbora.user.dto.AuthDtos.RegisterRequest;
 import com.designbora.user.dto.AuthDtos.ResetPasswordRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,6 +38,10 @@ public class AuthService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int CODE_VALID_MINUTES = 15;
 
+    /** DEV ONLY: kurudisha code ya reset kwenye jibu. LAZIMA iwe false kwenye production (tumia SMS). */
+    @Value("${app.dev.expose-reset-code:true}")
+    private boolean exposeResetCode;
+
     @Transactional
     public AuthResponse register(RegisterRequest req) {
         if (userRepository.existsByPhone(req.getPhone())) {
@@ -46,6 +51,10 @@ public class AuthService {
         if (req.getEmail() != null && !req.getEmail().isBlank()
                 && userRepository.existsByEmail(req.getEmail())) {
             throw ApiException.conflict("Barua pepe tayari imesajiliwa");
+        }
+
+        if (req.getRole() == null || req.getRole() == Role.ADMIN) {
+            throw ApiException.forbidden("Aina hii ya akaunti hairuhusiwi kusajiliwa");
         }
 
         if (req.getRole() == Role.DESIGNER && req.getAccountType() == null) {
@@ -91,6 +100,10 @@ public class AuthService {
         User user = userRepository.findByPhone(req.getPhone())
                 .orElseThrow(() -> ApiException.notFound("Mtumiaji hajapatikana"));
 
+        if (user.getRole() == Role.ADMIN) {
+            throw ApiException.forbidden("Akaunti za admin zinaingia kupitia Admin Panel ya web");
+        }
+
         String token = jwtUtil.generateToken(user.getId(), user.getPhone(), user.getRole().name());
         return new AuthResponse(token, user.getId(), user.getFullName(), user.getRole());
     }
@@ -104,6 +117,10 @@ public class AuthService {
     public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest req) {
         User user = userRepository.findByPhone(req.getPhone())
                 .orElseThrow(() -> ApiException.notFound("Hakuna akaunti yenye namba hii ya simu"));
+
+        if (user.getRole() == Role.ADMIN) {
+            throw ApiException.forbidden("Nenosiri la admin haliwezi kubadilishwa kwa njia hii");
+        }
 
         String code = generateSixDigitCode();
 
@@ -120,7 +137,7 @@ public class AuthService {
 
         return new ForgotPasswordResponse(
                 "Code ya kubadilisha nenosiri imetumwa (itaisha muda baada ya dakika " + CODE_VALID_MINUTES + ")",
-                code // DEV ONLY - ondoa hii kwenye production
+                exposeResetCode ? code : null // DEV ONLY: weka app.dev.expose-reset-code=false kwenye production
         );
     }
 
@@ -131,6 +148,10 @@ public class AuthService {
     public void resetPassword(ResetPasswordRequest req) {
         User user = userRepository.findByPhone(req.getPhone())
                 .orElseThrow(() -> ApiException.notFound("Hakuna akaunti yenye namba hii ya simu"));
+
+        if (user.getRole() == Role.ADMIN) {
+            throw ApiException.forbidden("Nenosiri la admin haliwezi kubadilishwa kwa njia hii");
+        }
 
         PasswordResetToken resetToken = passwordResetTokenRepository
                 .findTopByUserIdAndCodeAndUsedFalseOrderByIdDesc(user.getId(), req.getCode())

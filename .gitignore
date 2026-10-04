@@ -8,3 +8,11 @@ backend/storage/
 admin_web/node_modules/
 admin_web/.next/
 admin_web/.env*.local
+# Build outputs (kwa uhakika)
+backend/target/
+mobile_app/build/
+mobile_app/.dart_tool/
+# Build outputs (kwa uhakika)
+backend/target/
+mobile_app/build/
+mobile_app/.dart_tool/

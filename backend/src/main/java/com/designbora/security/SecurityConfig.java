@@ -75,6 +75,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/payments/mock-card/**").permitAll()
                 .requestMatchers("/api/payments/webhooks/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/verification-documents/*/view").permitAll()
+                .requestMatchers("/api/admin/auth/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated()
             )

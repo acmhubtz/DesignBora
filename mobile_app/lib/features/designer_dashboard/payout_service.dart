@@ -138,8 +138,9 @@ class PayoutService {
   static String? errorMessage(Object e) {
     try {
       final data = (e as dynamic).response?.data;
-      if (data != null && data['message'] != null)
+      if (data != null && data['message'] != null) {
         return data['message'].toString();
+      }
     } catch (_) {}
     return null;
   }
