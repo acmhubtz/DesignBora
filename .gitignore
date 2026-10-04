@@ -1,0 +1,10 @@
+# Faili za watumiaji (picha, drafts, nyaraka za KYC) - hazipaswi kuwa kwenye git
+backend/storage/
+**/*.log
+# Siri
+.env
+*.env
+# Admin web (Next.js)
+admin_web/node_modules/
+admin_web/.next/
+admin_web/.env*.local

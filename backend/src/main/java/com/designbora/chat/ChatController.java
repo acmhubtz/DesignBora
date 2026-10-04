@@ -1,0 +1,66 @@
+package com.designbora.chat;
+
+import com.designbora.common.ApiException;
+import com.designbora.order.Order;
+import com.designbora.order.OrderService;
+import com.designbora.user.User;
+import com.designbora.user.UserRepository;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Controller;
+
+import java.security.Principal;
+
+@Controller
+@RequiredArgsConstructor
+public class ChatController {
+
+    private final ChatMessageRepository chatMessageRepository;
+    private final UserRepository userRepository;
+    private final OrderService orderService;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    @MessageMapping("/chat.send/{orderId}")
+    public void sendMessage(@DestinationVariable Long orderId,
+                             ChatMessageRequest request,
+                             Principal principal) {
+
+        String phone = principal.getName();
+        User sender = userRepository.findByPhone(phone)
+                .orElseThrow(() -> ApiException.notFound("Mtumiaji hajapatikana"));
+
+        Order order = orderService.getOrderOrThrow(orderId);
+
+        ChatMessage message = ChatMessage.builder()
+                .order(order)
+                .sender(sender)
+                .message(request.getMessage())
+                .build();
+
+        ChatMessage saved = chatMessageRepository.save(message);
+
+        ChatMessageResponse response = new ChatMessageResponse(
+                saved.getId(), sender.getId(), sender.getFullName(),
+                saved.getMessage(), saved.getSentAt().toString());
+
+        messagingTemplate.convertAndSend("/topic/chat/" + orderId, response);
+    }
+
+    @Data
+    public static class ChatMessageRequest {
+        private String message;
+    }
+
+    @Data
+    public static class ChatMessageResponse {
+        private final Long id;
+        private final Long senderId;
+        private final String senderName;
+        private final String message;
+        private final String sentAt;
+    }
+}

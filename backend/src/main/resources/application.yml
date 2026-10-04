@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/designbora
+    username: designbora
+    password: designbora_dev_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+app:
+  jwt:
+    secret: "badilisha-hii-kuwa-neno-refu-la-siri-lisilobashirika-angalau-herufi-32"
+    expiration-ms: 86400000
+  storage:
+    base-path: ./storage
+    documents-path: documents
+    portfolio-path: portfolio
+    drafts-path: drafts
+    finals-path: finals
+  platform:
+    fee-type: FIXED
+    fee-fixed-amount: 1000
+    fee-percentage: 10.0
