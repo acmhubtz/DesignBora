@@ -14,6 +14,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompAuthInterceptor stompAuthInterceptor;
+    private final ChatSubscriptionGuard chatSubscriptionGuard;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -29,6 +30,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(stompAuthInterceptor);
+        // 1) Nani ameunganishwa (JWT)  2) Anaruhusiwa kusikiliza chat ipi
+        registration.interceptors(stompAuthInterceptor, chatSubscriptionGuard);
     }
 }
