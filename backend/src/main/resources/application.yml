@@ -31,6 +31,6 @@ app:
     drafts-path: drafts
     finals-path: finals
   platform:
-    fee-type: FIXED
+    fee-type: PERCENTAGE
     fee-fixed-amount: 1000
     fee-percentage: 10.0
