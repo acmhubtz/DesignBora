@@ -266,6 +266,51 @@ class _DesignerDashboardScreenState extends State<DesignerDashboardScreen> {
     });
   }
 
+  Future<void> _deletePortfolioItem(
+    PortfolioModel item,
+    BuildContext dialogContext,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: dialogContext,
+      builder: (confirmContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Kufuta kazi hii?'),
+        content: Text(
+          '"${item.title}" itaondolewa kwenye portfolio yako. Wateja hawataiona tena.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(confirmContext, false),
+            child: const Text(
+              'Ghairi',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(confirmContext, true),
+            child: const Text(
+              'Futa',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !dialogContext.mounted) return;
+
+    Navigator.pop(dialogContext);
+    try {
+      await _service.deletePortfolioItem(item.id);
+      messenger.showSnackBar(const SnackBar(content: Text('Kazi imefutwa')));
+      _loadAll();
+    } catch (e) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Imeshindwa kufuta kazi. Jaribu tena.')),
+      );
+    }
+  }
+
   void _showPortfolioItem(PortfolioModel item) {
     showDialog(
       context: context,
@@ -314,6 +359,14 @@ class _DesignerDashboardScreenState extends State<DesignerDashboardScreen> {
                           ),
                         ],
                       ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Futa kazi',
+                    onPressed: () => _deletePortfolioItem(item, dialogContext),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.red,
                     ),
                   ),
                   IconButton(

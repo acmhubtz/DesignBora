@@ -60,6 +60,21 @@ class DesignerDashboardService {
     return allCategories;
   }
 
+  /// Ada ya platform (aina na kiasi) kutoka backend
+  Future<({String type, double percentage, double fixed})> getFeeInfo() async {
+    final response = await _apiClient.dio.get('/platform/fee');
+    final data = response.data['data'] as Map;
+    return (
+      type: (data['feeType'] ?? 'PERCENTAGE').toString(),
+      percentage: (data['percentage'] as num? ?? 10).toDouble(),
+      fixed: (data['fixedAmount'] as num? ?? 0).toDouble(),
+    );
+  }
+
+  Future<void> deletePortfolioItem(int id) async {
+    await _apiClient.dio.delete('/portfolio/$id');
+  }
+
   Future<ServiceModel> createService({
     required int categoryId,
     required String title,
