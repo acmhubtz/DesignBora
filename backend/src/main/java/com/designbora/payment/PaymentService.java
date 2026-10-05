@@ -21,6 +21,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderService orderService;
     private final PaymentProvider paymentProvider;
+    private final com.designbora.notification.NotificationService notificationService;
 
     @Transactional
     public Payment initiate(Order order, PaymentRequest request) {
@@ -87,6 +88,8 @@ public class PaymentService {
         if (order.getStatus() == OrderStatus.PENDING_PAYMENT) {
             orderService.markAsPaid(orderId);
             orderService.startWork(orderId);
+            notificationService.toDesigner(order, "ORDER_PAID", "Oda mpya imelipwa! 🎉",
+                    "Oda #" + orderId + " ya TSh " + payment.getAmount().toPlainString() + " imelipwa. Anza kazi sasa.");
         }
         return payment;
     }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "725780624942",
+    "project_id": "designbora-b0c32",
+    "storage_bucket": "designbora-b0c32.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:725780624942:android:bbff2f273b02d0cbf6d1bf",
+        "android_client_info": {
+          "package_name": "com.designbora.designbora"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6LN237yehT8z4cuF42BsPz23180g3c4Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

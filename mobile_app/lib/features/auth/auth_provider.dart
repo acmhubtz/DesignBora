@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/user_model.dart';
 import '../../core/api/api_client.dart';
+import '../../core/notifications/push_service.dart';
 import 'auth_service.dart';
 
 enum AuthStatus { initial, authenticated, unauthenticated }
@@ -27,6 +28,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _user = await _authService.login(phone, password);
       _status = AuthStatus.authenticated;
+      PushService.instance.registerDevice();
       _isLoading = false;
       notifyListeners();
       return true;
@@ -64,6 +66,7 @@ class AuthProvider extends ChangeNotifier {
         companyRegNumber: companyRegNumber,
       );
       _status = AuthStatus.authenticated;
+      PushService.instance.registerDevice();
       _isLoading = false;
       notifyListeners();
       return true;
@@ -86,6 +89,7 @@ class AuthProvider extends ChangeNotifier {
       token: session.token,
     );
     _status = AuthStatus.authenticated;
+    PushService.instance.registerDevice();
     notifyListeners();
     return true;
   }
@@ -105,6 +109,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await PushService.instance.unregisterDevice();
     await _authService.logout();
     _user = null;
     _status = AuthStatus.unauthenticated;

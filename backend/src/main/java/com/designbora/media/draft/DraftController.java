@@ -34,6 +34,7 @@ public class DraftController {
     private final MediaStorageService mediaStorageService;
     private final PreviewService previewService;
     private final UserRepository userRepository;
+    private final com.designbora.notification.NotificationService notificationService;
 
     @PostMapping(value = "/{orderId}/drafts", consumes = "multipart/form-data")
     public ApiResponse<DraftResponse> uploadDraft(@PathVariable Long orderId,
@@ -74,6 +75,8 @@ public class DraftController {
 
         draft = draftRepository.save(draft);
         orderService.markDraftSubmitted(orderId);
+        notificationService.toCustomer(order, "DRAFT_SUBMITTED", "Draft mpya imefika 📎",
+                "Mbunifu ametuma Draft v" + nextVersion + ". Ikague na uthibitishe ukiridhika.");
 
         return ApiResponse.ok("Draft imetumwa (Version " + nextVersion + ")", toResponse(draft));
     }

@@ -19,6 +19,7 @@ public class OrderController {
 
     private final OrderService orderService;
     private final UserRepository userRepository;
+    private final com.designbora.notification.NotificationService notificationService;
 
     @PostMapping
     public ApiResponse<Order> create(@RequestBody CreateOrderRequest req) {
@@ -54,7 +55,10 @@ public class OrderController {
         if (!isCustomerOf(order, getCurrentUser())) {
             throw ApiException.forbidden("Mteja wa order hii pekee ndiye anaweza kuthibitisha");
         }
-        return ApiResponse.ok("Umethibitisha! Malipo yatatolewa kwa designer", orderService.confirmCompletion(id));
+        Order completed = orderService.confirmCompletion(id);
+        notificationService.toDesigner(completed, "ORDER_COMPLETED", "Kazi imethibitishwa ✅",
+                "Mteja amethibitisha Oda #" + id + ". Malipo yako yanaandaliwa.");
+        return ApiResponse.ok("Umethibitisha! Malipo yatatolewa kwa designer", completed);
     }
 
     // ---------- Wasaidizi ----------

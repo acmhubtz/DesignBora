@@ -23,6 +23,7 @@ public class ChatController {
     private final UserRepository userRepository;
     private final OrderService orderService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final com.designbora.notification.NotificationService notificationService;
 
     @MessageMapping("/chat.send/{orderId}")
     public void sendMessage(@DestinationVariable Long orderId,
@@ -59,6 +60,10 @@ public class ChatController {
                 saved.getMessage(), saved.getSentAt().toString());
 
         messagingTemplate.convertAndSend("/topic/chat/" + orderId, response);
+
+        String preview = saved.getMessage().length() > 120 ? saved.getMessage().substring(0, 120) + "…" : saved.getMessage();
+        if (!isCustomer) notificationService.toCustomer(order, "CHAT_MESSAGE", sender.getFullName(), preview);
+        if (!isDesigner) notificationService.toDesigner(order, "CHAT_MESSAGE", sender.getFullName(), preview);
     }
 
     @Data

@@ -40,6 +40,7 @@ public class DisputeService {
     private final ChatMessageRepository chatMessageRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final AdminAuditService auditService;
+    private final com.designbora.notification.NotificationService notificationService;
 
     @Transactional
     public Dispute open(Order order, User customer, String rawReason) {
@@ -66,6 +67,8 @@ public class DisputeService {
 
         postChat(order, customer, "⚠️ Nimefungua mgogoro kuhusu oda hii.\nSababu: " + reason
                 + "\n\nDesignBora itakagua mazungumzo na kazi, kisha itatoa uamuzi.");
+        notificationService.toDesigner(order, "DISPUTE_OPENED", "Mgogoro umefunguliwa ⚠️",
+                "Mteja amefungua mgogoro kwenye Oda #" + order.getId() + ". DesignBora inakagua.");
         return dispute;
     }
 
@@ -125,6 +128,8 @@ public class DisputeService {
 
         postChat(order, admin, "🛡️ Uamuzi wa DesignBora kuhusu mgogoro:\n" + outcome + "\n\nMaelezo: " + note);
         auditService.record("DISPUTE_RESOLVED", "ORDER", order.getId(), resolution + ": " + note);
+        notificationService.toCustomer(order, "DISPUTE_RESOLVED", "Uamuzi wa mgogoro 🛡️", outcome);
+        notificationService.toDesigner(order, "DISPUTE_RESOLVED", "Uamuzi wa mgogoro 🛡️", outcome);
         return dispute;
     }
 

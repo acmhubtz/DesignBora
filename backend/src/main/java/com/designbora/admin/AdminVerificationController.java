@@ -28,6 +28,7 @@ public class AdminVerificationController {
     private final DesignerProfileRepository designerProfileRepository;
     private final VerificationDocumentRepository documentRepository;
     private final AdminAuditService auditService;
+    private final com.designbora.notification.NotificationService notificationService;
 
     public record DocumentItem(Long id, String documentType, String status,
                                LocalDateTime uploadedAt, String extension) {
@@ -80,6 +81,10 @@ public class AdminVerificationController {
         updatePendingDocuments(designer, DocumentStatus.APPROVED);
         auditService.record("DESIGNER_APPROVED", "DESIGNER", designer.getId(),
                 designer.getUser() == null ? null : designer.getUser().getFullName());
+        if (designer.getUser() != null) {
+            notificationService.toUser(designer.getUser().getId(), "ACCOUNT_VERIFIED", "Akaunti imethibitishwa ✅",
+                    "Hongera! Wateja sasa wanaona alama ya uthibitisho kwenye wasifu wako.");
+        }
         return ApiResponse.ok("Mbunifu ameidhinishwa", toItem(designer));
     }
 
@@ -95,6 +100,10 @@ public class AdminVerificationController {
         designerProfileRepository.save(designer);
         updatePendingDocuments(designer, DocumentStatus.REJECTED);
         auditService.record("DESIGNER_REJECTED", "DESIGNER", designer.getId(), reason);
+        if (designer.getUser() != null) {
+            notificationService.toUser(designer.getUser().getId(), "ACCOUNT_REJECTED", "Uhakiki haukukubaliwa",
+                    "Sababu: " + reason + ". Pakia nyaraka mpya kwenye Uhakiki wa Akaunti.");
+        }
         return ApiResponse.ok("Mbunifu amekataliwa", toItem(designer));
     }
 

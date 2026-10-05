@@ -22,6 +22,7 @@ public class PayoutService {
     private final PayoutRepository payoutRepository;
     private final RefundRepository refundRepository;
     private final PayoutProvider payoutProvider;
+    private final com.designbora.notification.NotificationService notificationService;
 
     @Scheduled(initialDelay = 30_000, fixedDelay = 70_000)
     public void processQueue() {
@@ -83,6 +84,9 @@ public class PayoutService {
             payout.setFailureReason(null);
             payoutRepository.save(payout);
             log.info("Payout #{} imekamilika", payout.getId());
+            notificationService.toDesigner(payout.getOrder(), "PAYOUT_PAID", "Umelipwa! 💰",
+                    "TSh " + payout.getAmount().toPlainString() + " za Oda #" + payout.getOrder().getId() + " zimetumwa"
+                            + (payout.getDestination() == null ? "." : " kwenda " + payout.getDestination() + "."));
         } else if ("FAILED".equals(result.status())) {
             payout.setStatus(PayoutStatus.FAILED);
             payout.setFailureReason(shorten(result.failureReason(), 250));
@@ -111,6 +115,8 @@ public class PayoutService {
             refund.setProcessedAt(LocalDateTime.now());
             refundRepository.save(refund);
             log.info("Refund #{} imekamilika", refund.getId());
+            notificationService.toCustomer(refund.getOrder(), "REFUND_PAID", "Pesa yako imerudishwa",
+                    "TSh " + refund.getAmount().toPlainString() + " za Oda #" + refund.getOrder().getId() + " zimerudishwa kwenye namba yako.");
         } else if ("FAILED".equals(result.status())) {
             refund.setStatus(PayoutStatus.FAILED);
             refund.setFailureReason(shorten(result.failureReason(), 250));
