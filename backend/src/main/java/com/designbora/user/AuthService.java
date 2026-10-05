@@ -37,6 +37,8 @@ public class AuthService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int CODE_VALID_MINUTES = 15;
+    private static final int MAX_CODE_ATTEMPTS = 5;
+    private static final int MAX_CODES_PER_HOUR = 3;
 
     /** DEV ONLY: kurudisha code ya reset kwenye jibu. LAZIMA iwe false kwenye production (tumia SMS). */
     @Value("${app.dev.expose-reset-code:true}")
@@ -122,6 +124,13 @@ public class AuthService {
             throw ApiException.forbidden("Nenosiri la admin haliwezi kubadilishwa kwa njia hii");
         }
 
+        // Code zilizotolewa ndani ya saa 1 (expiresAt = muda wa kutolewa + dakika 15)
+        long recent = passwordResetTokenRepository.countByUserIdAndExpiresAtAfter(
+                user.getId(), LocalDateTime.now().minusMinutes(60 - CODE_VALID_MINUTES));
+        if (recent >= MAX_CODES_PER_HOUR) {
+            throw ApiException.conflict("Umeomba code mara nyingi. Subiri saa moja kisha ujaribu tena.");
+        }
+
         String code = generateSixDigitCode();
 
         PasswordResetToken resetToken = PasswordResetToken.builder()
@@ -144,7 +153,8 @@ public class AuthService {
     /**
      * Hatua ya 2: mtumiaji anathibitisha code aliyopokea na kuweka password mpya.
      */
-    @Transactional
+    // noRollbackFor: idadi ya majaribio yaliyokosewa ihifadhiwe hata kosa likitupwa
+    @Transactional(noRollbackFor = ApiException.class)
     public void resetPassword(ResetPasswordRequest req) {
         User user = userRepository.findByPhone(req.getPhone())
                 .orElseThrow(() -> ApiException.notFound("Hakuna akaunti yenye namba hii ya simu"));
@@ -153,12 +163,32 @@ public class AuthService {
             throw ApiException.forbidden("Nenosiri la admin haliwezi kubadilishwa kwa njia hii");
         }
 
+        // Code ya mwisho ambayo haijatumika (si kutafuta kwa code - hiyo ingeruhusu kubahatisha bila kikomo)
         PasswordResetToken resetToken = passwordResetTokenRepository
-                .findTopByUserIdAndCodeAndUsedFalseOrderByIdDesc(user.getId(), req.getCode())
+                .findTopByUserIdAndUsedFalseOrderByIdDesc(user.getId())
                 .orElseThrow(() -> ApiException.badRequest("Code si sahihi au tayari imetumika"));
 
         if (resetToken.isExpired()) {
             throw ApiException.badRequest("Code imeisha muda. Omba code mpya.");
+        }
+
+        int attempts = resetToken.getAttempts() == null ? 0 : resetToken.getAttempts();
+        if (attempts >= MAX_CODE_ATTEMPTS) {
+            resetToken.setUsed(true);
+            passwordResetTokenRepository.save(resetToken);
+            throw ApiException.badRequest("Umekosea mara nyingi mno. Omba code mpya.");
+        }
+
+        String given = req.getCode() == null ? "" : req.getCode().trim();
+        if (!java.security.MessageDigest.isEqual(
+                resetToken.getCode().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                given.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            resetToken.setAttempts(attempts + 1);
+            passwordResetTokenRepository.save(resetToken);
+            int left = MAX_CODE_ATTEMPTS - attempts - 1;
+            throw ApiException.badRequest(left > 0
+                    ? "Code si sahihi. Umebakiza majaribio " + left + "."
+                    : "Code si sahihi. Omba code mpya.");
         }
 
         user.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));

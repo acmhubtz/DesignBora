@@ -34,6 +34,10 @@ public class PasswordResetToken {
     @Column(nullable = false)
     private boolean used = false;
 
+    /** Majaribio ya code yaliyokosewa (kikomo: 5) */
+    @Column(name = "attempts")
+    private Integer attempts;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
