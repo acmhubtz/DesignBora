@@ -211,3 +211,46 @@ export const RESOLUTION_LABELS: Record<string, string> = {
   REFUND_CUSTOMER: "Mteja arudishiwe pesa",
   REVISION: "Marekebisho",
 };
+
+// ---------- Payouts na refunds ----------
+
+export type PayoutRow = {
+  id: number;
+  orderId: number;
+  designerName: string;
+  designerPhone: string;
+  channel: string | null;
+  destination: string | null;
+  ready: boolean;
+  amount: number;
+  status: string;
+  failureReason: string | null;
+  createdAt: string | null;
+  processedAt: string | null;
+};
+
+export type RefundRow = {
+  id: number;
+  orderId: number;
+  customerName: string;
+  phone: string | null;
+  amount: number;
+  status: string;
+  failureReason: string | null;
+  createdAt: string | null;
+  processedAt: string | null;
+};
+
+export type PayoutSummary = {
+  payoutCounts: Record<string, number>;
+  refundCounts: Record<string, number>;
+  payoutsWaiting: number;
+  refundsWaiting: number;
+};
+
+export const PAYOUT_STATUS: Record<string, { label: string; style: string }> = {
+  PENDING: { label: "Kwenye foleni", style: "bg-orange-100 text-orange-700" },
+  PROCESSING: { label: "Inatumwa", style: "bg-blue-100 text-blue-700" },
+  PROCESSED: { label: "Imelipwa", style: "bg-emerald-100 text-emerald-700" },
+  FAILED: { label: "Imeshindwa", style: "bg-red-100 text-red-700" },
+};

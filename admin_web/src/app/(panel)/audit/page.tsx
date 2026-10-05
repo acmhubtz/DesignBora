@@ -10,6 +10,10 @@ const ACTION_LABELS: Record<string, { label: string; style: string }> = {
   DESIGNER_APPROVED: { label: "Mbunifu amethibitishwa", style: "bg-emerald-100 text-emerald-700" },
   DESIGNER_REJECTED: { label: "Mbunifu amekataliwa", style: "bg-orange-100 text-orange-700" },
   REPORT_DOWNLOADED: { label: "Ripoti imepakuliwa", style: "bg-gray-100 text-gray-700" },
+  PAYOUT_RETRIED: { label: "Payout imejaribiwa tena", style: "bg-blue-100 text-blue-700" },
+  PAYOUT_MARKED_PAID: { label: "Payout imelipwa kwa mkono", style: "bg-amber-100 text-amber-700" },
+  REFUND_RETRIED: { label: "Refund imejaribiwa tena", style: "bg-blue-100 text-blue-700" },
+  REFUND_MARKED_PAID: { label: "Refund imelipwa kwa mkono", style: "bg-amber-100 text-amber-700" },
   DISPUTE_RESOLVED: { label: "Mgogoro umetatuliwa", style: "bg-indigo-100 text-indigo-700" },
   DISPUTE_FILE_VIEWED: { label: "Faili la mgogoro limefunguliwa", style: "bg-gray-100 text-gray-700" },
 };
