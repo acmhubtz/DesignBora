@@ -33,7 +33,7 @@ export default function LoginPage() {
         return;
       }
       if (json.status === "OK") {
-        router.replace("/designers");
+        router.replace("/dashboard");
         router.refresh();
         return;
       }

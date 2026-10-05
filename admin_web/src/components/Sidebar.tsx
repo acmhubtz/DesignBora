@@ -5,7 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 const links = [
+  { href: "/dashboard", label: "Dashibodi" },
   { href: "/designers", label: "Uhakiki wa Wabunifu" },
+  { href: "/designer-activity", label: "Shughuli za Wabunifu" },
+  { href: "/reports", label: "Ripoti" },
   { href: "/audit", label: "Kumbukumbu za Admin" },
 ];
 

@@ -81,3 +81,98 @@ export function formatDate(value?: string | null): string {
     ? value
     : date.toLocaleString("sw-TZ", { dateStyle: "medium", timeStyle: "short" });
 }
+
+// ---------- Takwimu (analytics) ----------
+
+export type MoneySummary = {
+  totalCollected: number;
+  escrowHeld: number;
+  platformFeesEarned: number;
+  platformFeesPending: number;
+  paidToDesigners: number;
+  payoutsPending: number;
+  payoutsFailed: number;
+};
+
+export type CountSummary = {
+  customers: number;
+  designers: number;
+  verifiedDesigners: number;
+  pendingVerification: number;
+  totalOrders: number;
+  activeOrders: number;
+  completedOrders: number;
+  disputedOrders: number;
+  newUsersInRange: number;
+  newOrdersInRange: number;
+};
+
+export type DayPoint = {
+  date: string;
+  revenue: number;
+  platformFee: number;
+  orders: number;
+  payments: number;
+  newUsers: number;
+};
+
+export type NamedValue = { name: string; count: number; amount: number };
+
+export type TopDesigner = { designerId: number; name: string; completedOrders: number; earnings: number };
+
+export type Overview = {
+  days: number;
+  money: MoneySummary;
+  counts: CountSummary;
+  daily: DayPoint[];
+  ordersByStatus: NamedValue[];
+  paymentsByProvider: NamedValue[];
+  topDesigners: TopDesigner[];
+};
+
+export type DesignerActivity = {
+  designerId: number;
+  name: string;
+  phone: string;
+  verificationStatus: string;
+  registeredAt: string | null;
+  totalOrders: number;
+  activeOrders: number;
+  completedOrders: number;
+  disputedOrders: number;
+  grossSales: number;
+  earnings: number;
+  paidOut: number;
+  pendingPayout: number;
+  lastOrderAt: string | null;
+  payoutMethod: string | null;
+};
+
+export function tsh(value: number | null | undefined): string {
+  return `TSh ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Number(value ?? 0))}`;
+}
+
+export function shortTsh(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
+  return String(Math.round(value));
+}
+
+export const ORDER_STATUS_LABELS: Record<string, string> = {
+  PENDING_PAYMENT: "Haijalipwa",
+  PAID: "Imelipwa",
+  IN_PROGRESS: "Inaendelea",
+  DRAFT_SUBMITTED: "Draft Imetumwa",
+  COMPLETED: "Imekamilika",
+  DISPUTED: "Mgogoro",
+};
+
+export const PROVIDER_LABELS: Record<string, string> = {
+  MPESA: "M-Pesa",
+  MIXX: "Mixx by Yas",
+  AIRTEL: "Airtel Money",
+  HALOPESA: "HaloPesa",
+  TPESA: "T-Pesa",
+  CARD: "Kadi",
+  MOBILE: "Simu",
+};
