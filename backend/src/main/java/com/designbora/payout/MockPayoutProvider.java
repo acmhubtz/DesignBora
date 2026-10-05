@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/** Majaribio tu: kila payout "inafanikiwa" mara moja, hakuna pesa halisi */
+/** Majaribio tu: kila payout/refund "inafanikiwa" mara moja, hakuna pesa halisi */
 @Slf4j
 @Component
 @ConditionalOnProperty(name = "app.clickpesa.enabled", havingValue = "false", matchIfMissing = true)
@@ -20,6 +20,17 @@ public class MockPayoutProvider implements PayoutProvider {
 
     @Override
     public StatusResult checkStatus(Payout payout) {
+        return new StatusResult("SUCCESS", null);
+    }
+
+    @Override
+    public String sendRefund(Refund refund) {
+        log.info("[MOCK] Refund ya TSh {} kwenda +{}", refund.getAmount(), refund.getPhone());
+        return "MOCKRF" + refund.getId();
+    }
+
+    @Override
+    public StatusResult checkRefund(Refund refund) {
         return new StatusResult("SUCCESS", null);
     }
 

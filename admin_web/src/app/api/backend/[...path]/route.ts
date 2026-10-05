@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { ADMIN_COOKIE, backendUrl } from "@/lib/session";
 
 /** Njia za backend zinazoruhusiwa kupitia proxy hii */
-const ALLOWED_ROOTS = new Set(["admin", "verification-documents"]);
+const ALLOWED_ROOTS = new Set(["admin", "verification-documents", "uploads"]);
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
@@ -16,7 +16,8 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     return NextResponse.json({ success: false, message: "Ingia kwanza" }, { status: 401 });
   }
 
-  const target = `${backendUrl()}/api/${path.map(encodeURIComponent).join("/")}${req.nextUrl.search}`;
+  const prefix = path[0] === "uploads" ? "" : "/api";
+  const target = `${backendUrl()}${prefix}/${path.map(encodeURIComponent).join("/")}${req.nextUrl.search}`;
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
   let body: string | undefined;
   if (req.method !== "GET" && req.method !== "HEAD") {

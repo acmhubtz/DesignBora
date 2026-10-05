@@ -11,6 +11,7 @@ import '../../core/api/api_client.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_decorations.dart';
+import '../../core/widgets/text_input_dialog.dart';
 import '../../core/widgets/user_avatar.dart';
 import '../../models/chat_message_model.dart';
 import '../../models/draft_model.dart';
@@ -442,6 +443,37 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
     if (mounted) setState(() => _downloading = false);
   }
 
+  // ---------- Mgogoro (mteja) ----------
+
+  Future<void> _openDispute() async {
+    final reason = await showTextInputDialog(
+      context,
+      title: 'Fungua mgogoro',
+      hint: 'Eleza tatizo: mfano kazi hailingani na tulichokubaliana...',
+      confirmLabel: 'Fungua',
+      confirmColor: Colors.red,
+      maxLines: 4,
+    );
+    if (reason == null || !mounted) return;
+    if (reason.length < 10) {
+      _showSnack('Eleza tatizo kwa undani zaidi (angalau herufi 10)');
+      return;
+    }
+    try {
+      await _orderService.openDispute(widget.orderId, reason);
+      if (!mounted) return;
+      await _loadDrafts();
+      if (!mounted) return;
+      _showSnack(
+        'Mgogoro umefunguliwa. DesignBora itakagua na kutoa uamuzi.',
+        success: true,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack(_extractError(e) ?? 'Imeshindwa kufungua mgogoro');
+    }
+  }
+
   // ---------- Kupiga simu ----------
 
   Future<void> _callOtherParty(bool isDesigner) async {
@@ -633,6 +665,31 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
               onPressed: () => _callOtherParty(isDesigner),
               icon: const Icon(Icons.call_rounded, color: AppColors.primary),
             ),
+          if (!isDesigner &&
+              const [
+                'PAID',
+                'IN_PROGRESS',
+                'DRAFT_SUBMITTED',
+              ].contains(_orderStatus))
+            PopupMenuButton<String>(
+              tooltip: 'Zaidi',
+              onSelected: (value) {
+                if (value == 'dispute') _openDispute();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'dispute',
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.report_problem_rounded,
+                      color: Colors.red,
+                    ),
+                    title: Text('Fungua mgogoro'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 12, left: 8),
             child: Center(child: _StatusBadge(status: _orderStatus)),
@@ -641,7 +698,9 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
       ),
       body: Column(
         children: [
-          if (_orderStatus == 'COMPLETED')
+          if (_orderStatus == 'DISPUTED')
+            const _DisputeBanner()
+          else if (_orderStatus == 'COMPLETED')
             _CompletedBanner(
               downloading: _downloading,
               onDownload: _drafts.isNotEmpty ? _downloadLatest : null,
@@ -675,7 +734,8 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
                   ),
           ),
           if (_uploadingDraft) _buildUploadProgress(),
-          if (_orderStatus != 'COMPLETED') _buildInputBar(isDesigner),
+          if (_orderStatus != 'COMPLETED' && _orderStatus != 'CANCELLED')
+            _buildInputBar(isDesigner),
         ],
       ),
     );
@@ -1088,6 +1148,8 @@ class _StatusBadge extends StatelessWidget {
         return AppColors.statusCompleted;
       case 'DISPUTED':
         return AppColors.statusDisputed;
+      case 'CANCELLED':
+        return AppColors.textMuted;
       default:
         return AppColors.textSecondary;
     }
@@ -1105,6 +1167,8 @@ class _StatusBadge extends StatelessWidget {
         return 'Imekamilika';
       case 'DISPUTED':
         return 'Mgogoro';
+      case 'CANCELLED':
+        return 'Imeghairiwa';
       default:
         return status;
     }
@@ -1182,6 +1246,53 @@ class _ChatBubble extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DisputeBanner extends StatelessWidget {
+  const _DisputeBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.statusDisputed.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.statusDisputed.withValues(alpha: 0.3),
+        ),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.gavel_rounded, color: AppColors.statusDisputed),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mgogoro unakaguliwa',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.statusDisputed,
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Pesa imeshikiliwa salama. Timu ya DesignBora inakagua mazungumzo na kazi, '
+                  'na itatoa uamuzi hapa kwenye chat.',
+                  style: TextStyle(fontSize: 12.5, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

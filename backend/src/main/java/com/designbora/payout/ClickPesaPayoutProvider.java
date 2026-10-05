@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Comparator;
@@ -26,7 +27,7 @@ public class ClickPesaPayoutProvider implements PayoutProvider {
     @Override
     public String send(Payout payout, Destination destination) {
         String reference = ClickPesaClient.reference("DBPO", payout.getId());
-        long amount = payout.getAmount().setScale(0, RoundingMode.HALF_UP).longValueExact();
+        long amount = whole(payout.getAmount());
 
         Map<?, ?> response;
         if ("BANK".equals(destination.method())) {
@@ -39,11 +40,7 @@ public class ClickPesaPayoutProvider implements PayoutProvider {
                     "orderReference", reference,
                     "bic", destination.bic()));
         } else {
-            response = client.post("/payouts/create-mobile-money-payout", Map.of(
-                    "amount", amount,
-                    "phoneNumber", destination.phone(),
-                    "currency", "TZS",
-                    "orderReference", reference));
+            response = mobilePayout(reference, amount, destination.phone());
         }
         log.info("ClickPesa payout ({}) imetumwa: ref={} status={} fee={}", destination.method(), reference,
                 response == null ? null : response.get("status"),
@@ -53,17 +50,21 @@ public class ClickPesaPayoutProvider implements PayoutProvider {
 
     @Override
     public StatusResult checkStatus(Payout payout) {
-        Map<?, ?> item = client.getFirst("/payouts/{reference}", payout.getProviderReference());
-        if (item == null) {
-            return new StatusResult("PROCESSING", null);
-        }
-        String status = String.valueOf(item.get("status"));
-        return switch (status) {
-            case "SUCCESS" -> new StatusResult("SUCCESS", null);
-            case "FAILED", "REFUNDED", "REVERSED" -> new StatusResult("FAILED",
-                    "ClickPesa: " + status + (item.get("notes") == null ? "" : " - " + item.get("notes")));
-            default -> new StatusResult("PROCESSING", null);
-        };
+        return query(payout.getProviderReference());
+    }
+
+    @Override
+    public String sendRefund(Refund refund) {
+        String reference = ClickPesaClient.reference("DBRF", refund.getId());
+        Map<?, ?> response = mobilePayout(reference, whole(refund.getAmount()), refund.getPhone());
+        log.info("ClickPesa refund imetumwa: ref={} status={}", reference,
+                response == null ? null : response.get("status"));
+        return reference;
+    }
+
+    @Override
+    public StatusResult checkRefund(Refund refund) {
+        return query(refund.getProviderReference());
     }
 
     /** Orodha ya benki (inahifadhiwa kwa saa 6) */
@@ -84,5 +85,33 @@ public class ClickPesaPayoutProvider implements PayoutProvider {
             banksFetchedAt = Instant.now();
         }
         return banks;
+    }
+
+    // ---------- Wasaidizi ----------
+
+    private Map<?, ?> mobilePayout(String reference, long amount, String phone) {
+        return client.post("/payouts/create-mobile-money-payout", Map.of(
+                "amount", amount,
+                "phoneNumber", phone,
+                "currency", "TZS",
+                "orderReference", reference));
+    }
+
+    private StatusResult query(String reference) {
+        Map<?, ?> item = client.getFirst("/payouts/{reference}", reference);
+        if (item == null) {
+            return new StatusResult("PROCESSING", null);
+        }
+        String status = String.valueOf(item.get("status"));
+        return switch (status) {
+            case "SUCCESS" -> new StatusResult("SUCCESS", null);
+            case "FAILED", "REFUNDED", "REVERSED" -> new StatusResult("FAILED",
+                    "ClickPesa: " + status + (item.get("notes") == null ? "" : " - " + item.get("notes")));
+            default -> new StatusResult("PROCESSING", null);
+        };
+    }
+
+    private static long whole(BigDecimal amount) {
+        return amount.setScale(0, RoundingMode.HALF_UP).longValueExact();
     }
 }

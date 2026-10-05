@@ -25,5 +25,10 @@ public interface PayoutProvider {
 
     StatusResult checkStatus(Payout payout);
 
+    /** Kurudisha pesa kwa mteja kwenye namba aliyolipia nayo */
+    String sendRefund(Refund refund);
+
+    StatusResult checkRefund(Refund refund);
+
     List<Bank> banks();
 }

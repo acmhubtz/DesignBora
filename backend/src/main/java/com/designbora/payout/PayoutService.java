@@ -8,10 +8,11 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.Optional;
 
 /**
- * Foleni ya payouts. ClickPesa inaruhusu payout MOJA kila sekunde 60,
- * kwa hiyo tunatuma moja kila sekunde 70 na kufuatilia zilizotumwa.
+ * Foleni ya payouts na refunds. ClickPesa inaruhusu ombi MOJA kila sekunde 60,
+ * kwa hiyo tunatuma moja tu kila sekunde 70 (payouts kwanza, kisha refunds).
  */
 @Slf4j
 @Service
@@ -19,17 +20,26 @@ import java.util.Comparator;
 public class PayoutService {
 
     private final PayoutRepository payoutRepository;
+    private final RefundRepository refundRepository;
     private final PayoutProvider payoutProvider;
 
     @Scheduled(initialDelay = 30_000, fixedDelay = 70_000)
     public void processQueue() {
-        for (Payout payout : payoutRepository.findByStatus(PayoutStatus.PROCESSING)) {
-            refresh(payout);
-        }
-        payoutRepository.findByStatus(PayoutStatus.PENDING).stream()
+        payoutRepository.findByStatus(PayoutStatus.PROCESSING).forEach(this::refresh);
+        refundRepository.findByStatus(PayoutStatus.PROCESSING).forEach(this::refreshRefund);
+
+        Optional<Payout> nextPayout = payoutRepository.findByStatus(PayoutStatus.PENDING).stream()
                 .filter(p -> destinationOf(p.getDesigner()) != null)
-                .min(Comparator.comparing(Payout::getId))
-                .ifPresent(this::send);
+                .min(Comparator.comparing(Payout::getId));
+        if (nextPayout.isPresent()) {
+            send(nextPayout.get());
+            return;
+        }
+
+        refundRepository.findByStatus(PayoutStatus.PENDING).stream()
+                .filter(r -> r.getPhone() != null && !r.getPhone().isBlank())
+                .min(Comparator.comparing(Refund::getId))
+                .ifPresent(this::sendRefund);
     }
 
     /** Mahali pa kupeleka pesa kulingana na chaguo la mbunifu; null kama hajakamilisha taarifa */
@@ -46,6 +56,8 @@ public class PayoutService {
         return new PayoutProvider.Destination("MOBILE", d.getPayoutPhone(), null, null, null, null);
     }
 
+    // ---------- Payouts ----------
+
     private void send(Payout payout) {
         PayoutProvider.Destination destination = destinationOf(payout.getDesigner());
         try {
@@ -57,7 +69,6 @@ public class PayoutService {
             payout.setStatus(PayoutStatus.PROCESSING);
             payout.setFailureReason(null);
         } catch (Exception e) {
-            // Inabaki PENDING - itajaribiwa tena mzunguko ujao
             payout.setFailureReason(shorten(e.getMessage(), 250));
             log.warn("Payout #{} imeshindwa kutumwa: {}", payout.getId(), e.getMessage());
         }
@@ -76,6 +87,34 @@ public class PayoutService {
             payout.setStatus(PayoutStatus.FAILED);
             payout.setFailureReason(shorten(result.failureReason(), 250));
             payoutRepository.save(payout);
+        }
+    }
+
+    // ---------- Refunds ----------
+
+    private void sendRefund(Refund refund) {
+        try {
+            refund.setProviderReference(payoutProvider.sendRefund(refund));
+            refund.setStatus(PayoutStatus.PROCESSING);
+            refund.setFailureReason(null);
+        } catch (Exception e) {
+            refund.setFailureReason(shorten(e.getMessage(), 250));
+            log.warn("Refund #{} imeshindwa kutumwa: {}", refund.getId(), e.getMessage());
+        }
+        refundRepository.save(refund);
+    }
+
+    private void refreshRefund(Refund refund) {
+        PayoutProvider.StatusResult result = payoutProvider.checkRefund(refund);
+        if ("SUCCESS".equals(result.status())) {
+            refund.setStatus(PayoutStatus.PROCESSED);
+            refund.setProcessedAt(LocalDateTime.now());
+            refundRepository.save(refund);
+            log.info("Refund #{} imekamilika", refund.getId());
+        } else if ("FAILED".equals(result.status())) {
+            refund.setStatus(PayoutStatus.FAILED);
+            refund.setFailureReason(shorten(result.failureReason(), 250));
+            refundRepository.save(refund);
         }
     }
 

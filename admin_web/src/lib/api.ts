@@ -176,3 +176,38 @@ export const PROVIDER_LABELS: Record<string, string> = {
   CARD: "Kadi",
   MOBILE: "Simu",
 };
+
+// ---------- Migogoro ----------
+
+export type DisputeSummary = {
+  id: number;
+  orderId: number;
+  serviceTitle: string;
+  customer: { name: string; phone: string };
+  designer: { name: string; phone: string };
+  grossAmount: number;
+  netAmount: number;
+  platformFee: number;
+  orderStatus: string;
+  reason: string;
+  status: string;
+  resolution: string | null;
+  adminNote: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  draftCount: number;
+  messageCount: number;
+};
+
+export type DisputeDetail = {
+  summary: DisputeSummary;
+  messages: { id: number; senderName: string; senderRole: string; message: string; sentAt: string }[];
+  drafts: { id: number; versionNo: number; extension: string; previewUrl: string; submittedAt: string }[];
+  refund: { status: string; phone: string | null; amount: number; failureReason: string | null } | null;
+};
+
+export const RESOLUTION_LABELS: Record<string, string> = {
+  PAY_DESIGNER: "Mbunifu alipwe",
+  REFUND_CUSTOMER: "Mteja arudishiwe pesa",
+  REVISION: "Marekebisho",
+};

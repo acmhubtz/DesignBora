@@ -69,6 +69,14 @@ class OrderService {
     return (url: data['url'] as String, fileName: data['fileName'] as String);
   }
 
+  /// Mteja anafungua mgogoro - pesa inabaki Escrow hadi admin aamue
+  Future<void> openDispute(int orderId, String reason) async {
+    await _apiClient.dio.post(
+      '/orders/$orderId/dispute',
+      data: {'reason': reason},
+    );
+  }
+
   Future<OrderModel> confirmCompletion(int orderId) async {
     final response = await _apiClient.dio.post(
       '/orders/$orderId/confirm-completion',

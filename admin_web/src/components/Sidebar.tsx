@@ -7,6 +7,7 @@ import { useState } from "react";
 const links = [
   { href: "/dashboard", label: "Dashibodi" },
   { href: "/designers", label: "Uhakiki wa Wabunifu" },
+  { href: "/disputes", label: "Migogoro" },
   { href: "/designer-activity", label: "Shughuli za Wabunifu" },
   { href: "/reports", label: "Ripoti" },
   { href: "/audit", label: "Kumbukumbu za Admin" },

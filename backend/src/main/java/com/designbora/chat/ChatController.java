@@ -35,6 +35,17 @@ public class ChatController {
 
         Order order = orderService.getOrderOrThrow(orderId);
 
+        boolean isCustomer = order.getCustomer() != null && order.getCustomer().getId().equals(sender.getId());
+        boolean isDesigner = order.getDesigner() != null && order.getDesigner().getUser() != null
+                && order.getDesigner().getUser().getId().equals(sender.getId());
+        boolean isAdmin = sender.getRole() == com.designbora.user.Role.ADMIN;
+        if (!isCustomer && !isDesigner && !isAdmin) {
+            throw ApiException.forbidden("Huna ruhusa ya kutuma ujumbe kwenye oda hii");
+        }
+        if (request.getMessage() == null || request.getMessage().isBlank()) {
+            return;
+        }
+
         ChatMessage message = ChatMessage.builder()
                 .order(order)
                 .sender(sender)
