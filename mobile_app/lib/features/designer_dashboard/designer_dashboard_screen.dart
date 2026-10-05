@@ -245,6 +245,35 @@ class _DesignerDashboardScreenState extends State<DesignerDashboardScreen> {
     _loadAll();
   }
 
+  Future<void> _editService(ServiceModel service) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AddServiceScreen(existing: service)),
+    );
+    if (result == true) _loadAll();
+  }
+
+  Future<void> _toggleService(ServiceModel service) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _service.toggleService(service.id);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            service.active
+                ? 'Huduma imefichwa kwa wateja'
+                : 'Huduma inaonekana tena kwa wateja',
+          ),
+        ),
+      );
+      _loadAll();
+    } catch (e) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Imeshindwa kubadilisha. Jaribu tena.')),
+      );
+    }
+  }
+
   void _openPayouts() {
     Navigator.push(
       context,
@@ -985,8 +1014,11 @@ class _DesignerDashboardScreenState extends State<DesignerDashboardScreen> {
               padding: _pagePadding(context, bottom: 96),
               itemCount: _services.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) =>
-                  _ServiceCard(service: _services[index]),
+              itemBuilder: (context, index) => _ServiceCard(
+                service: _services[index],
+                onEdit: () => _editService(_services[index]),
+                onToggle: () => _toggleService(_services[index]),
+              ),
             ),
     );
   }
@@ -1434,75 +1466,130 @@ class _EmptyState extends StatelessWidget {
 
 class _ServiceCard extends StatelessWidget {
   final ServiceModel service;
+  final VoidCallback onEdit;
+  final VoidCallback onToggle;
 
-  const _ServiceCard({required this.service});
+  const _ServiceCard({
+    required this.service,
+    required this.onEdit,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppDecorations.card(radius: 16),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.design_services_rounded,
-              color: AppColors.accent,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Opacity(
+      opacity: service.active ? 1 : 0.65,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+        decoration: AppDecorations.card(radius: 16),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Text(
-                  service.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14.5,
+                Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.design_services_rounded,
+                    color: AppColors.accent,
+                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.schedule_rounded,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Siku ${service.deliveryDays}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        service.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                        ),
                       ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule_rounded,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Siku ${service.deliveryDays}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(
+                    _formatTsh(service.price),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accentDark,
+                      fontSize: 14.5,
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            _formatTsh(service.price),
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              color: AppColors.accentDark,
-              fontSize: 14.5,
+            const Divider(height: 20),
+            Row(
+              children: [
+                Icon(
+                  service.active
+                      ? Icons.visibility_rounded
+                      : Icons.visibility_off_rounded,
+                  size: 16,
+                  color: service.active
+                      ? AppColors.statusCompleted
+                      : AppColors.textMuted,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    service.active
+                        ? 'Inaonekana kwa wateja'
+                        : 'Imefichwa kwa wateja',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: service.active
+                          ? AppColors.statusCompleted
+                          : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+                Switch(
+                  value: service.active,
+                  activeTrackColor: AppColors.statusCompleted,
+                  onChanged: (_) => onToggle(),
+                ),
+                TextButton.icon(
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_rounded, size: 16),
+                  label: const Text('Hariri'),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

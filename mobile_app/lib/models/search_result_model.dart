@@ -5,6 +5,7 @@ class SearchResultModel {
   final int deliveryDays;
   final int designerId;
   final String designerName;
+  final String? designerAvatarUrl;
   final bool verified;
   final double compositeScore;
   final double avgStarRating;
@@ -16,6 +17,7 @@ class SearchResultModel {
     required this.deliveryDays,
     required this.designerId,
     required this.designerName,
+    this.designerAvatarUrl,
     required this.verified,
     required this.compositeScore,
     required this.avgStarRating,
@@ -29,6 +31,7 @@ class SearchResultModel {
       deliveryDays: json['deliveryDays'],
       designerId: json['designerId'],
       designerName: json['designerName'] ?? 'Designer',
+      designerAvatarUrl: json['designerAvatarUrl'],
       verified: json['verified'] ?? false,
       compositeScore: (json['compositeScore'] as num?)?.toDouble() ?? 0.5,
       avgStarRating: (json['avgStarRating'] as num?)?.toDouble() ?? 0.0,

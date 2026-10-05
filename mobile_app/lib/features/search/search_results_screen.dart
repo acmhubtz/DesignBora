@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_decorations.dart';
+import '../../core/widgets/user_avatar.dart';
 import '../../models/search_result_model.dart';
 import '../designer_profile/designer_profile_screen.dart';
 import 'catalog_service.dart';
@@ -67,6 +68,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           designerName: result.designerName,
           verified: result.verified,
           avgStarRating: result.avgStarRating,
+          designerAvatarUrl: result.designerAvatarUrl,
         ),
       ),
     );
@@ -149,18 +151,10 @@ class _ResultCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
+                UserAvatar(
+                  name: result.designerName,
+                  avatarUrl: result.designerAvatarUrl,
                   radius: 20,
-                  backgroundColor: AppColors.primary,
-                  child: Text(
-                    result.designerName.isNotEmpty
-                        ? result.designerName[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

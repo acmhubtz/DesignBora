@@ -71,6 +71,29 @@ class DesignerDashboardService {
     );
   }
 
+  Future<void> updateService(
+    int id, {
+    required String title,
+    String? description,
+    required double price,
+    required int deliveryDays,
+  }) async {
+    await _apiClient.dio.put(
+      '/services/$id',
+      data: {
+        'title': title,
+        'description': description,
+        'price': price,
+        'deliveryDays': deliveryDays,
+      },
+    );
+  }
+
+  /// Kuficha / kuonyesha huduma kwa wateja
+  Future<void> toggleService(int id) async {
+    await _apiClient.dio.patch('/services/$id/toggle');
+  }
+
   Future<void> deletePortfolioItem(int id) async {
     await _apiClient.dio.delete('/portfolio/$id');
   }

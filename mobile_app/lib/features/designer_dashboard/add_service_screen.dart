@@ -4,20 +4,26 @@ import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_decorations.dart';
 import '../../models/category_model.dart';
+import '../../models/service_model.dart';
 import 'designer_dashboard_service.dart';
 
 String _formatTsh(double amount) {
   final digits = amount.toStringAsFixed(0);
   final buffer = StringBuffer();
   for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    if (i > 0 && (digits.length - i) % 3 == 0) {
+      buffer.write(',');
+    }
     buffer.write(digits[i]);
   }
   return 'TSh $buffer';
 }
 
+/// Kuongeza huduma mpya, au kuhariri iliyopo (ukipitisha [existing])
 class AddServiceScreen extends StatefulWidget {
-  const AddServiceScreen({super.key});
+  final ServiceModel? existing;
+
+  const AddServiceScreen({super.key, this.existing});
 
   @override
   State<AddServiceScreen> createState() => _AddServiceScreenState();
@@ -40,14 +46,22 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   bool _submitting = false;
   String? _errorMessage;
 
-  // Ada ya platform (inasomwa kutoka backend; 10% ni ya akiba tu)
   String _feeType = 'PERCENTAGE';
   double _feePercentage = 10;
   double _feeFixed = 0;
 
+  bool get _isEditing => widget.existing != null;
+
   @override
   void initState() {
     super.initState();
+    final existing = widget.existing;
+    if (existing != null) {
+      _titleController.text = existing.title;
+      _descriptionController.text = existing.description ?? '';
+      _priceController.text = existing.price.toStringAsFixed(0);
+      _daysController.text = '${existing.deliveryDays}';
+    }
     _load();
   }
 
@@ -66,7 +80,10 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       _loadFailed = false;
     });
     try {
-      final categories = await _service.getAllCategoriesFlat();
+      // Idara zinahitajika tu wakati wa kuongeza huduma mpya
+      final categories = _isEditing
+          ? <CategoryModel>[]
+          : await _service.getAllCategoriesFlat();
       try {
         final fee = await _service.getFeeInfo();
         _feeType = fee.type;
@@ -106,7 +123,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   Future<void> _handleSubmit() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedCategory == null) {
+    if (!_isEditing && _selectedCategory == null) {
       setState(() => _errorMessage = 'Chagua idara ya huduma');
       return;
     }
@@ -116,16 +133,30 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       _errorMessage = null;
     });
 
+    final title = _titleController.text.trim();
+    final description = _descriptionController.text.trim().isEmpty
+        ? null
+        : _descriptionController.text.trim();
+    final days = int.parse(_daysController.text.trim());
+
     try {
-      await _service.createService(
-        categoryId: _selectedCategory!.id,
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
-        price: _price!,
-        deliveryDays: int.parse(_daysController.text.trim()),
-      );
+      if (_isEditing) {
+        await _service.updateService(
+          widget.existing!.id,
+          title: title,
+          description: description,
+          price: _price!,
+          deliveryDays: days,
+        );
+      } else {
+        await _service.createService(
+          categoryId: _selectedCategory!.id,
+          title: title,
+          description: description,
+          price: _price!,
+          deliveryDays: days,
+        );
+      }
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
@@ -144,7 +175,9 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         return data['message'].toString();
       }
     } catch (_) {}
-    return 'Imeshindwa kuongeza huduma. Jaribu tena.';
+    return _isEditing
+        ? 'Imeshindwa kuhifadhi mabadiliko. Jaribu tena.'
+        : 'Imeshindwa kuongeza huduma. Jaribu tena.';
   }
 
   @override
@@ -152,7 +185,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Ongeza Huduma'),
+        title: Text(_isEditing ? 'Hariri Huduma' : 'Ongeza Huduma'),
         backgroundColor: AppColors.surface,
       ),
       body: _loading
@@ -170,7 +203,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                     color: AppColors.textMuted,
                   ),
                   const SizedBox(height: 12),
-                  const Text('Imeshindwa kupakia idara'),
+                  const Text('Imeshindwa kupakia'),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: _load,
@@ -197,27 +230,30 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const _Label('Idara'),
-                DropdownButtonFormField<CategoryModel>(
-                  initialValue: _selectedCategory,
-                  isExpanded: true,
-                  hint: const Text('Chagua idara'),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.category_rounded, size: 20),
+                if (!_isEditing) ...[
+                  const _Label('Idara'),
+                  DropdownButtonFormField<CategoryModel>(
+                    initialValue: _selectedCategory,
+                    isExpanded: true,
+                    hint: const Text('Chagua idara'),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.category_rounded, size: 20),
+                    ),
+                    items: _categories
+                        .map(
+                          (c) =>
+                              DropdownMenuItem(value: c, child: Text(c.name)),
+                        )
+                        .toList(),
+                    onChanged: _submitting
+                        ? null
+                        : (v) => setState(() {
+                            _selectedCategory = v;
+                            _errorMessage = null;
+                          }),
                   ),
-                  items: _categories
-                      .map(
-                        (c) => DropdownMenuItem(value: c, child: Text(c.name)),
-                      )
-                      .toList(),
-                  onChanged: _submitting
-                      ? null
-                      : (v) => setState(() {
-                          _selectedCategory = v;
-                          _errorMessage = null;
-                        }),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
+                ],
                 const _Label('Jina la huduma'),
                 TextFormField(
                   controller: _titleController,
@@ -278,6 +314,16 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   const SizedBox(height: 12),
                   _buildEarningsPreview(_price!),
                 ],
+                if (_isEditing) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Bei mpya itatumika kwa oda mpya tu. Oda zilizopo hazibadiliki.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 18),
                 const _Label('Muda wa kukamilisha'),
                 Wrap(
@@ -286,7 +332,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   children: _quickDays.map((d) {
                     final selected = _daysController.text.trim() == '$d';
                     return ChoiceChip(
-                      label: Text(d == 1 ? 'Siku 1' : 'Siku $d'),
+                      label: Text('Siku $d'),
                       selected: selected,
                       selectedColor: AppColors.accent.withValues(alpha: 0.18),
                       labelStyle: TextStyle(
@@ -449,9 +495,16 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                       color: Colors.white,
                     ),
                   )
-                : const Icon(Icons.add_business_rounded, size: 20),
+                : Icon(
+                    _isEditing
+                        ? Icons.save_rounded
+                        : Icons.add_business_rounded,
+                    size: 20,
+                  ),
             label: Text(
-              _submitting ? 'Inahifadhi...' : 'Weka Huduma',
+              _submitting
+                  ? 'Inahifadhi...'
+                  : (_isEditing ? 'Hifadhi Mabadiliko' : 'Weka Huduma'),
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
           ),

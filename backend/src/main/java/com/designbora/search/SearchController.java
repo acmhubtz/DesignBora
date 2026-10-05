@@ -70,6 +70,8 @@ public class SearchController {
                             ? offering.getDesigner().getCompanyName()
                             : offering.getDesigner().getUser().getFullName())
                     .verified(offering.getDesigner().isVerified())
+                    .designerAvatarUrl(offering.getDesigner().getUser() == null ? null
+                            : offering.getDesigner().getUser().getAvatarUrl())
                     .compositeScore(metrics.getCompositeScore())
                     .avgStarRating(metrics.getAvgStarRating())
                     .build();

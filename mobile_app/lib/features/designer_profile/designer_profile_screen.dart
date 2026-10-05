@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_decorations.dart';
 import '../../core/widgets/server_image.dart';
+import '../../core/widgets/user_avatar.dart';
 import '../../models/portfolio_model.dart';
 import '../../models/service_model.dart';
 import '../../models/review_model.dart';
@@ -14,6 +15,7 @@ class DesignerProfileScreen extends StatefulWidget {
   final String designerName;
   final bool verified;
   final double avgStarRating;
+  final String? designerAvatarUrl;
 
   const DesignerProfileScreen({
     super.key,
@@ -21,6 +23,7 @@ class DesignerProfileScreen extends StatefulWidget {
     required this.designerName,
     required this.verified,
     required this.avgStarRating,
+    this.designerAvatarUrl,
   });
 
   @override
@@ -60,7 +63,9 @@ class _DesignerProfileScreenState extends State<DesignerProfileScreen>
       if (!mounted) return;
       setState(() {
         _portfolio = results[0] as List<PortfolioModel>;
-        _services = results[1] as List<ServiceModel>;
+        _services = (results[1] as List<ServiceModel>)
+            .where((s) => s.active)
+            .toList();
         _reviews = results[2] as List<ReviewModel>;
         _loading = false;
       });
@@ -155,19 +160,10 @@ class _DesignerProfileScreenState extends State<DesignerProfileScreen>
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      CircleAvatar(
+                      UserAvatar(
+                        name: widget.designerName,
+                        avatarUrl: widget.designerAvatarUrl,
                         radius: 12,
-                        backgroundColor: AppColors.primary,
-                        child: Text(
-                          widget.designerName.isNotEmpty
-                              ? widget.designerName[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                       ),
                       const SizedBox(width: 8),
                       Flexible(
@@ -306,19 +302,10 @@ class _DesignerProfileScreenState extends State<DesignerProfileScreen>
       color: AppColors.surface,
       child: Column(
         children: [
-          CircleAvatar(
+          UserAvatar(
+            name: widget.designerName,
+            avatarUrl: widget.designerAvatarUrl,
             radius: 38,
-            backgroundColor: AppColors.primary,
-            child: Text(
-              widget.designerName.isNotEmpty
-                  ? widget.designerName[0].toUpperCase()
-                  : '?',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
           ),
           const SizedBox(height: 12),
           Row(

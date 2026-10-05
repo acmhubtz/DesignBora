@@ -19,6 +19,7 @@ public class SearchResultDto {
 
     private Long designerId;
     private String designerName;
+    private String designerAvatarUrl;
     private boolean verified;
 
     private BigDecimal compositeScore;

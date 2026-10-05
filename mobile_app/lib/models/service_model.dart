@@ -4,6 +4,7 @@ class ServiceModel {
   final String? description;
   final double price;
   final int deliveryDays;
+  final bool active;
 
   ServiceModel({
     required this.id,
@@ -11,6 +12,7 @@ class ServiceModel {
     this.description,
     required this.price,
     required this.deliveryDays,
+    this.active = true,
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class ServiceModel {
       description: json['description'],
       price: (json['price'] as num).toDouble(),
       deliveryDays: json['deliveryDays'],
+      active: json['active'] ?? true,
     );
   }
 }
