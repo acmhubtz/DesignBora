@@ -16,3 +16,10 @@ mobile_app/.dart_tool/
 backend/target/
 mobile_app/build/
 mobile_app/.dart_tool/
+
+# Siri - kamwe zisiingie git
+!*.env.example
+*service-account*.json
+*.jks
+*.keystore
+key.properties

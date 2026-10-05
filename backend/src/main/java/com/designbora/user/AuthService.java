@@ -41,7 +41,7 @@ public class AuthService {
     private static final int MAX_CODES_PER_HOUR = 3;
 
     /** DEV ONLY: kurudisha code ya reset kwenye jibu. LAZIMA iwe false kwenye production (tumia SMS). */
-    @Value("${app.dev.expose-reset-code:true}")
+    @Value("${app.dev.expose-reset-code:false}")
     private boolean exposeResetCode;
 
     @Transactional
