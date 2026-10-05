@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/user_model.dart';
+import '../../core/api/api_client.dart';
 import 'auth_service.dart';
 
 enum AuthStatus { initial, authenticated, unauthenticated }
@@ -74,10 +75,26 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Inarudisha mtumiaji aliyeingia awali (bila kuandika nenosiri tena)
+  Future<bool> tryAutoLogin() async {
+    final session = await ApiClient().readSession();
+    if (session == null) return false;
+    _user = UserModel(
+      userId: session.userId,
+      fullName: session.fullName,
+      role: session.role,
+      token: session.token,
+    );
+    _status = AuthStatus.authenticated;
+    notifyListeners();
+    return true;
+  }
+
   /// Inasasisha jina baada ya kubadilisha wasifu (bila kuingia upya)
   void updateFullName(String fullName) {
     final current = _user;
     if (current == null) return;
+    ApiClient().saveUserName(fullName);
     _user = UserModel(
       userId: current.userId,
       fullName: fullName,

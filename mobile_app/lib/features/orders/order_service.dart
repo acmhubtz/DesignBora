@@ -69,6 +69,30 @@ class OrderService {
     return (url: data['url'] as String, fileName: data['fileName'] as String);
   }
 
+  /// Maoni ya oda (null kama bado hayajatolewa)
+  Future<Map<String, dynamic>?> getOrderReview(int orderId) async {
+    final response = await _apiClient.dio.get('/reviews/order/$orderId');
+    final data = response.data['data'];
+    return data is Map<String, dynamic> ? data : null;
+  }
+
+  Future<void> submitReview({
+    required int orderId,
+    required int starRating,
+    String? comment,
+    required bool deliveredOnTime,
+  }) async {
+    await _apiClient.dio.post(
+      '/reviews',
+      data: {
+        'orderId': orderId,
+        'starRating': starRating,
+        'comment': comment,
+        'deliveredOnTime': deliveredOnTime,
+      },
+    );
+  }
+
   /// Mteja anafungua mgogoro - pesa inabaki Escrow hadi admin aamue
   Future<void> openDispute(int orderId, String reason) async {
     await _apiClient.dio.post(

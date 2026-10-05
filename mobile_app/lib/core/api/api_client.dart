@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -12,6 +14,8 @@ class ApiClient {
 
   static const _tokenKey = 'auth_token';
   static const _userIdKey = 'user_id';
+  static const _userNameKey = 'user_name';
+  static const _userRoleKey = 'user_role';
 
   ApiClient._internal() {
     dio = Dio(
@@ -33,12 +37,65 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) {
-          // Hapa baadaye tutaongeza logic ya "token imeisha muda -> rudisha kwenye login"
           return handler.next(error);
         },
       ),
     );
   }
+
+  // ---------- Kipindi (session) ----------
+
+  Future<void> saveSession({
+    required String token,
+    required int userId,
+    required String fullName,
+    required String role,
+  }) async {
+    await _storage.write(key: _tokenKey, value: token);
+    await _storage.write(key: _userIdKey, value: userId.toString());
+    await _storage.write(key: _userNameKey, value: fullName);
+    await _storage.write(key: _userRoleKey, value: role);
+  }
+
+  /// Kipindi kilichohifadhiwa; null kama hakipo au token imeisha muda
+  Future<({String token, int userId, String fullName, String role})?>
+  readSession() async {
+    final token = await _storage.read(key: _tokenKey);
+    final userId = int.tryParse(await _storage.read(key: _userIdKey) ?? '');
+    final fullName = await _storage.read(key: _userNameKey);
+    final role = await _storage.read(key: _userRoleKey);
+
+    if (token == null || userId == null || fullName == null || role == null) {
+      return null;
+    }
+    if (_isExpired(token)) {
+      await clearToken();
+      return null;
+    }
+    return (token: token, userId: userId, fullName: fullName, role: role);
+  }
+
+  Future<void> saveUserName(String fullName) async {
+    await _storage.write(key: _userNameKey, value: fullName);
+  }
+
+  /// Inasoma muda wa kuisha (exp) ndani ya JWT; dakika 1 ya tahadhari
+  static bool _isExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final payload = json.decode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      );
+      final exp = payload['exp'];
+      if (exp is! num) return false;
+      return DateTime.now().millisecondsSinceEpoch ~/ 1000 >= exp - 60;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  // ---------- Njia za zamani (bado zinatumika) ----------
 
   Future<void> saveToken(String token) async {
     await _storage.write(key: _tokenKey, value: token);
@@ -57,9 +114,11 @@ class ApiClient {
     return value == null ? null : int.tryParse(value);
   }
 
-  /// Inafuta token NA user ID (inatumika wakati wa logout)
+  /// Inafuta kipindi chote (inatumika wakati wa logout)
   Future<void> clearToken() async {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _userIdKey);
+    await _storage.delete(key: _userNameKey);
+    await _storage.delete(key: _userRoleKey);
   }
 }

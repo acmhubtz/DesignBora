@@ -61,8 +61,12 @@ class AuthService {
   }
 
   Future<void> _saveSession(UserModel user) async {
-    await _apiClient.saveToken(user.token);
-    await _apiClient.saveUserId(user.userId);
+    await _apiClient.saveSession(
+      token: user.token,
+      userId: user.userId,
+      fullName: user.fullName,
+      role: user.role,
+    );
   }
 
   String _handleError(DioException e) {

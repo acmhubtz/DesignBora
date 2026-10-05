@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
+    java.util.Optional<Review> findFirstByOrderId(Long orderId);
+
 
     List<Review> findByDesignerIdOrderByCreatedAtDesc(Long designerId);
 
