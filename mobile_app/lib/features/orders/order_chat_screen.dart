@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stomp_dart_client/stomp_dart_client.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+import '../../core/calls/call_manager.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/constants/api_constants.dart';
@@ -477,20 +478,12 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
   // ---------- Kupiga simu ----------
 
   Future<void> _callOtherParty(bool isDesigner) async {
-    final raw = isDesigner ? _order?.customerPhone : _order?.designerPhone;
-    if (raw == null || raw.trim().isEmpty) {
-      _showSnack(
-        'Namba ya simu haipatikani kwa sasa. Jaribu tena baada ya muda mfupi.',
-      );
+    if (kIsWeb) {
+      _showSnack('Simu za sauti zinapatikana kwenye app ya simu tu');
       return;
     }
-    var phone = raw.replaceAll(RegExp(r'[^0-9+]'), '');
-    if (phone.startsWith('255')) phone = '+$phone';
-
-    if (kIsWeb) {
-      _showSnack(
-        'Kupiga simu kunawezekana kwenye app ya simu tu. Namba: $phone',
-      );
+    if (CallManager.instance.busy) {
+      _showSnack('Tayari uko kwenye simu');
       return;
     }
 
@@ -498,42 +491,28 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: Text('Piga simu kwa ${widget.designerName}?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              phone,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.accent.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
+        title: Text('Piga simu ya sauti kwa ${widget.designerName}?'),
+        content: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.accent.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_rounded, size: 18, color: AppColors.accentDark),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Simu inapigwa ndani ya DesignBora: namba zenu za simu hazionekani. '
+                  'Simu hazirekodiwi, kwa hiyo makubaliano yoyote (mabadiliko ya kazi, muda, bei) '
+                  'yaandikeni pia hapa kwenye chat ili yawe ushahidi kama kutatokea mgogoro.',
+                  style: TextStyle(fontSize: 12.5, height: 1.4),
+                ),
               ),
-              child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.info_rounded,
-                    size: 18,
-                    color: AppColors.accentDark,
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Simu hazirekodiwi. Makubaliano yoyote (mabadiliko ya kazi, muda, bei) '
-                      'yaandikeni pia hapa kwenye chat ili yawe ushahidi kama kutatokea mgogoro.',
-                      style: TextStyle(fontSize: 12.5, height: 1.4),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -555,8 +534,10 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    final ok = await launchUrl(Uri(scheme: 'tel', path: phone));
-    if (!ok && mounted) _showSnack('Imeshindwa kufungua programu ya simu');
+    await CallManager.instance.startOutgoing(
+      orderId: widget.orderId,
+      otherName: widget.designerName,
+    );
   }
 
   // ---------- Wasaidizi ----------
