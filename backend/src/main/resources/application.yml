@@ -33,4 +33,4 @@ app:
   platform:
     fee-type: PERCENTAGE
     fee-fixed-amount: 1000
-    fee-percentage: 10.0
+    fee-percentage: 3.0

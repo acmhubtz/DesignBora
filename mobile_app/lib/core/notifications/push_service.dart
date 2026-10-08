@@ -9,6 +9,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../features/orders/order_chat_screen.dart';
 import '../../firebase_options.dart';
 import '../api/api_client.dart';
+import '../calls/call_manager.dart';
 
 /// Arifa (push notifications) kupitia Firebase Cloud Messaging
 class PushService {
@@ -64,6 +65,7 @@ class PushService {
         _token = token;
         _sendToken(token);
       });
+      WidgetsBinding.instance.addObserver(CallManager.instance);
       _initialized = true;
     } catch (e) {
       debugPrint('Arifa hazikuwashwa: $e');
@@ -72,6 +74,7 @@ class PushService {
 
   /// Baada ya login: omba ruhusa ya arifa na usajili simu hii kwenye backend
   Future<void> registerDevice() async {
+    CallManager.instance.startListening();
     if (!_initialized) return;
     try {
       await FirebaseMessaging.instance.requestPermission();
@@ -95,6 +98,7 @@ class PushService {
 
   /// Logout: simu hii isipokee arifa za mtumiaji huyu tena
   Future<void> unregisterDevice() async {
+    CallManager.instance.stopListening();
     final token = _token;
     if (!_initialized || token == null) return;
     try {
@@ -117,6 +121,10 @@ class PushService {
 
   /// App ikiwa wazi, Android haionyeshi arifa yenyewe - tunaionyesha sisi
   void _showForeground(RemoteMessage message) {
+    if (_isIncomingCall(message.data, message.notification?.title)) {
+      CallManager.instance.checkIncoming(); // fungua skrini ya simu
+      return;
+    }
     final notification = message.notification;
     if (notification == null) return;
     _local.show(
@@ -137,7 +145,14 @@ class PushService {
     );
   }
 
+  bool _isIncomingCall(Map<String, dynamic> data, String? title) =>
+      data['type'] == 'INCOMING_CALL' || (title ?? '').contains('anakupigia');
+
   void _openFromData(Map<String, dynamic> data) {
+    if (_isIncomingCall(data, null)) {
+      CallManager.instance.checkIncoming(); // kutoka arifa
+      return;
+    }
     final orderId = int.tryParse('${data['orderId'] ?? ''}');
     final navigator = navigatorKey.currentState;
     if (orderId == null || navigator == null) return;

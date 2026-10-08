@@ -18,6 +18,7 @@ import '../../models/chat_message_model.dart';
 import '../../models/draft_model.dart';
 import '../../models/order_model.dart';
 import '../auth/auth_provider.dart';
+import 'chat_attachment.dart';
 import 'draft_preview_screen.dart';
 import 'draft_widgets.dart';
 import 'order_service.dart';
@@ -477,6 +478,103 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
 
   // ---------- Kupiga simu ----------
 
+  // ---------- Faili za chat ----------
+
+  /// Mteja: faili la maelezo moja kwa moja. Mbunifu: achague Draft au faili la kawaida.
+  Future<void> _onAttachPressed(bool isDesigner) async {
+    if (!isDesigner) {
+      await _pickAndSendAttachment();
+      return;
+    }
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.verified_rounded,
+                  color: AppColors.accent,
+                ),
+                title: const Text(
+                  'Tuma kama Draft',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'Kazi yako ili mteja aikague na kuithibitisha',
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'draft'),
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.attach_file_rounded,
+                  color: AppColors.primary,
+                ),
+                title: const Text(
+                  'Faili la kawaida',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'Mfano, maelezo au swali - si kazi ya kuthibitishwa',
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'file'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (choice == 'draft') await _pickAndSubmitDraft();
+    if (choice == 'file') await _pickAndSendAttachment();
+  }
+
+  Future<void> _pickAndSendAttachment() async {
+    if (_uploadingDraft) return;
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(withData: true);
+    } catch (e) {
+      debugPrint('FilePicker error: $e');
+    }
+    final file = result?.files.single;
+    if (file == null || file.bytes == null || !mounted) return;
+    if (file.size > kMaxAttachmentBytes) {
+      _showSnack('Faili lisizidi MB 25');
+      return;
+    }
+
+    setState(() {
+      _uploadingDraft = true;
+      _uploadProgress = 0;
+    });
+    try {
+      await ChatAttachments.upload(
+        orderId: widget.orderId,
+        file: file,
+        onProgress: (p) {
+          if (mounted) setState(() => _uploadProgress = p);
+        },
+      );
+      // Ujumbe wenye faili unafika kupitia WebSocket kama ujumbe mwingine wowote
+    } catch (e) {
+      String msg = 'Faili halikutumwa. Jaribu tena.';
+      try {
+        final d = (e as dynamic).response?.data;
+        if (d != null && d['message'] != null) msg = d['message'].toString();
+      } catch (_) {}
+      if (mounted) _showSnack(msg);
+    } finally {
+      if (mounted) setState(() => _uploadingDraft = false);
+    }
+  }
+
   Future<void> _callOtherParty(bool isDesigner) async {
     if (kIsWeb) {
       _showSnack('Simu za sauti zinapatikana kwenye app ya simu tu');
@@ -769,17 +867,16 @@ class _OrderChatScreenState extends State<OrderChatScreen> {
       child: SafeArea(
         child: Row(
           children: [
-            if (isDesigner)
-              IconButton(
-                tooltip: 'Tuma Draft',
-                onPressed: _uploadingDraft ? null : _pickAndSubmitDraft,
-                icon: const Icon(
-                  Icons.attach_file_rounded,
-                  color: AppColors.primary,
-                ),
-              )
-            else
-              const SizedBox(width: 4),
+            IconButton(
+              tooltip: 'Ambatisha faili',
+              onPressed: _uploadingDraft
+                  ? null
+                  : () => _onAttachPressed(isDesigner),
+              icon: const Icon(
+                Icons.attach_file_rounded,
+                color: AppColors.primary,
+              ),
+            ),
             Expanded(
               child: TextField(
                 controller: _messageController,
@@ -1216,12 +1313,15 @@ class _ChatBubble extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
               ],
-              Text(
-                message.message,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.35,
-                  color: isMine ? Colors.white : AppColors.textPrimary,
+              ChatMessageBody(
+                message: message,
+                text: Text(
+                  message.message,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.35,
+                    color: isMine ? Colors.white : AppColors.textPrimary,
+                  ),
                 ),
               ),
             ],

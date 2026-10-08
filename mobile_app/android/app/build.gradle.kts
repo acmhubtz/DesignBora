@@ -19,6 +19,7 @@ android {
     }
 
     defaultConfig {
+        manifestPlaceholders["applicationName"] = "com.designbora.designbora.MainApplication"
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.designbora.designbora"
         // You can update the following values to match your application needs.

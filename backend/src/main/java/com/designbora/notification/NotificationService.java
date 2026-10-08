@@ -23,6 +23,11 @@ public class NotificationService {
         send(order, false, type, title, body);
     }
 
+    /** Simu za sauti: arifa ya data-only (inaamsha app ionyeshe skrini ya simu) */
+    public void callData(Long userId, Map<String, String> data, long ttlSeconds) {
+        pushSender.sendData(userId, data, ttlSeconds);
+    }
+
     public void toUser(Long userId, String type, String title, String body) {
         pushSender.notifyUser(userId, title, body, Map.of("type", type));
     }

@@ -12,5 +12,5 @@ import java.math.BigDecimal;
 public class PlatformProperties {
     private String feeType = "FIXED";
     private BigDecimal feeFixedAmount = new BigDecimal("1000");
-    private BigDecimal feePercentage = new BigDecimal("10.0");
+    private BigDecimal feePercentage = new BigDecimal("3.0");
 }

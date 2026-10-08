@@ -44,6 +44,9 @@ public class CallService {
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationService notificationService;
 
+    @org.springframework.beans.factory.annotation.Value("${app.jwt.secret}")
+    private String keySecret;
+
     // ------------------------------------------------------------------ actions
 
     @Transactional
@@ -84,9 +87,17 @@ public class CallService {
                 .createdAt(LocalDateTime.now())
                 .build());
 
-        notificationService.toUser(other.getId(), "INCOMING_CALL",
-                "📞 " + me.getFullName() + " anakupigia",
-                "Gusa kupokea simu ya sauti (Oda #" + orderId + ")");
+        // App ikiwa wazi: simu inaingia papo hapo kupitia WebSocket (bila kusubiri FCM)
+        messagingTemplate.convertAndSend("/topic/incoming/" + other.getId(),
+                (Object) Map.of("type", "INCOMING_CALL", "callId", call.getId()));
+        // App ikiwa nje/imefungwa: data push inaamsha app ionyeshe skrini ya simu
+        notificationService.callData(other.getId(), Map.of(
+                "type", "INCOMING_CALL",
+                "callId", String.valueOf(call.getId()),
+                "orderId", String.valueOf(orderId),
+                "callerName", me.getFullName() == null ? "DesignBora" : me.getFullName(),
+                "declineKey", declineKey(call.getId())),
+                RING_TIMEOUT_SECONDS);
         return call;
     }
 
@@ -142,6 +153,35 @@ public class CallService {
         return getForParticipant(callId, currentUser());
     }
 
+    /** Ufunguo wa kukataa simu hii moja tu (unatumwa ndani ya data push kwa anayepigiwa) */
+    public String declineKey(Long callId) {
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(
+                    keySecret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+            return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
+                    mac.doFinal(("decline:" + callId).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalStateException("declineKey haikutengenezwa", e);
+        }
+    }
+
+    /** Kataa kutoka skrini ya simu ya mfumo, app ikiwa imefungwa kabisa (bila login) */
+    @Transactional
+    public void declineByKey(Long callId, String key) {
+        CallLog call = callLogRepository.findById(callId).orElse(null);
+        if (call == null || key == null) return;
+        boolean valid = java.security.MessageDigest.isEqual(
+                declineKey(callId).getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                key.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        if (!valid) {
+            throw ApiException.forbidden("Ufunguo si sahihi");
+        }
+        if (call.getStatus() == CallStatus.RINGING) {
+            finish(call, CallStatus.REJECTED, false);
+        }
+    }
+
     // ------------------------------------------------------------------ scheduler
 
     /** Kila sekunde 15: simu zisizopokelewa ndani ya sekunde 45 -> MISSED; zilizokwama -> ENDED */
@@ -162,10 +202,16 @@ public class CallService {
     // ------------------------------------------------------------------ helpers
 
     private void finish(CallLog call, CallStatus status, boolean notifyMissed) {
+        boolean wasRinging = call.getStatus() == CallStatus.RINGING;
         call.setStatus(status);
         call.setEndedAt(LocalDateTime.now());
         callLogRepository.save(call);
         broadcast(call, status.name());
+        if (wasRinging) {
+            notificationService.callData(call.getCallee().getId(), Map.of(
+                    "type", "CALL_CANCELLED",
+                    "callId", String.valueOf(call.getId())), 60);
+        }
 
         switch (status) {
             case ENDED -> {
@@ -177,9 +223,16 @@ public class CallService {
             case MISSED -> {
                 postToChat(call, "📞 Simu haikupokelewa");
                 if (notifyMissed) {
-                    notificationService.toUser(call.getCallee().getId(), "MISSED_CALL",
-                            "📞 Simu uliyokosa",
-                            call.getCaller().getFullName() + " alikupigia (Oda #" + call.getOrder().getId() + ")");
+                    Order o = call.getOrder();
+                    String title = "📞 Simu uliyokosa";
+                    String body = call.getCaller().getFullName() + " alikupigia. Gusa kufungua chat.";
+                    boolean calleeIsCustomer = o.getCustomer() != null
+                            && o.getCustomer().getId().equals(call.getCallee().getId());
+                    if (calleeIsCustomer) {
+                        notificationService.toCustomer(o, "MISSED_CALL", title, body);
+                    } else {
+                        notificationService.toDesigner(o, "MISSED_CALL", title, body);
+                    }
                 }
             }
             default -> { }

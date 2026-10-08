@@ -51,6 +51,13 @@ public class CallController {
         return ok(CallResponse.from(callService.reject(id)));
     }
 
+    /** Skrini ya simu ya mfumo (app imefungwa kabisa): kataa kwa ufunguo wa simu hiyo */
+    @PostMapping("/calls/{id}/decline")
+    public ResponseEntity<Map<String, Object>> declineByKey(@PathVariable Long id, @RequestParam String key) {
+        callService.declineByKey(id, key);
+        return ok(null);
+    }
+
     @PostMapping("/calls/{id}/end")
     public ResponseEntity<Map<String, Object>> end(@PathVariable Long id) {
         return ok(CallResponse.from(callService.end(id)));

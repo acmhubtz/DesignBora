@@ -94,4 +94,43 @@ public class PushSender {
             log.warn("Arifa haikutumwa kwa mtumiaji #{}: {}", userId, e.getMessage());
         }
     }
+
+    /**
+     * Data-only + HIGH priority: inaamsha app hata ikiwa imefungwa au simu iko kwenye usingizi.
+     * App yenyewe inaamua cha kuonyesha (mf. skrini ya simu inayoingia).
+     */
+    @Async
+    public void sendData(Long userId, Map<String, String> data, long ttlSeconds) {
+        if (userId == null || !ready()) return;
+
+        List<String> tokens = deviceTokenRepository.findByUserId(userId).stream()
+                .map(DeviceToken::getToken)
+                .toList();
+        if (tokens.isEmpty()) return;
+
+        MulticastMessage message = MulticastMessage.builder()
+                .addAllTokens(tokens)
+                .putAllData(data)
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(AndroidConfig.Priority.HIGH)
+                        .setTtl(ttlSeconds * 1000)
+                        .build())
+                .build();
+
+        try {
+            BatchResponse response = FirebaseMessaging.getInstance().sendEachForMulticast(message);
+            List<SendResponse> results = response.getResponses();
+            for (int i = 0; i < results.size(); i++) {
+                SendResponse result = results.get(i);
+                if (!result.isSuccessful() && result.getException() != null) {
+                    MessagingErrorCode code = result.getException().getMessagingErrorCode();
+                    if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.INVALID_ARGUMENT) {
+                        deviceTokenRepository.deleteByToken(tokens.get(i));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Arifa ya data haikutumwa kwa mtumiaji #{}: {}", userId, e.getMessage());
+        }
+    }
 }

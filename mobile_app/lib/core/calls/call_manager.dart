@@ -10,6 +10,7 @@ import '../../features/calls/call_screen.dart';
 import '../api/api_client.dart';
 import '../constants/api_constants.dart';
 import '../notifications/push_service.dart';
+import 'call_sounds.dart';
 
 enum CallPhase { idle, outgoing, incoming, connecting, active, ended }
 
@@ -19,6 +20,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
   static final CallManager instance = CallManager._();
 
   final ApiClient _api = ApiClient();
+  final CallSounds _sounds = CallSounds();
 
   CallPhase phase = CallPhase.idle;
   int? callId;
@@ -31,7 +33,8 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
   String? endMessage;
 
   int? _myId;
-  StompClient? _stomp;
+  StompClient? _stomp; // signaling ya simu inayoendelea
+  StompClient? _listener; // kusikiliza simu zinazoingia (app ikiwa wazi)
   RTCPeerConnection? _pc;
   MediaStream? _localStream;
   List<Map<String, dynamic>> _iceServers = const [];
@@ -45,10 +48,46 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
 
   bool get busy => phase != CallPhase.idle;
 
-  // App ikirudi mbele: angalia kama kuna simu inayoingia
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) checkIncoming();
+    if (state == AppLifecycleState.resumed) {
+      startListening();
+      checkIncoming();
+    } else if (state == AppLifecycleState.paused && !busy) {
+      stopListening(); // app nyuma: arifa (FCM) zinachukua kazi
+    }
+  }
+
+  // ------------------------------------------------------------ kusikiliza
+
+  /// Baada ya login / app ikirudi mbele: sikiliza /topic/incoming/{myId}
+  Future<void> startListening() async {
+    if (_listener != null) return;
+    final token = await _api.getToken();
+    final myId = await _api.getUserId();
+    if (token == null || myId == null || _listener != null) return;
+
+    _listener = StompClient(
+      config: StompConfig(
+        url: ApiConstants.wsUrl,
+        stompConnectHeaders: {'Authorization': 'Bearer $token'},
+        webSocketConnectHeaders: {'Authorization': 'Bearer $token'},
+        onConnect: (_) {
+          _listener?.subscribe(
+            destination: '/topic/incoming/$myId',
+            callback: (_) => checkIncoming(),
+          );
+        },
+        onWebSocketError: (e) => debugPrint('Incoming WS: $e'),
+        onStompError: (f) => debugPrint('Incoming STOMP: ${f.body}'),
+      ),
+    );
+    _listener!.activate();
+  }
+
+  void stopListening() {
+    _listener?.deactivate();
+    _listener = null;
   }
 
   // ------------------------------------------------------------ kupiga
@@ -68,6 +107,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
       final res = await _api.dio.post('/orders/$orderId/calls');
       callId = (res.data['data']['id'] as num).toInt();
       await _prepare();
+      if (phase == CallPhase.outgoing) _sounds.startRingback(speaker: speaker);
       _ringTimer = Timer(const Duration(seconds: 60), () {
         if (phase == CallPhase.outgoing) hangUp(message: 'Hakupokea simu');
       });
@@ -92,6 +132,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
       isCaller = false;
       _setPhase(CallPhase.incoming);
       _openScreen();
+      _sounds.startRingtone();
       _startVibrate();
       await _prepare(); // sikiliza: mpigaji akikata kabla hujapokea
     } catch (e) {
@@ -104,6 +145,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> accept() async {
     if (phase != CallPhase.incoming) return;
     _stopVibrate();
+    await _sounds.stopLoop();
     _setPhase(CallPhase.connecting);
     _startConnectTimer();
     try {
@@ -134,6 +176,8 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
     for (final t in _localStream?.getAudioTracks() ?? <MediaStreamTrack>[]) {
       t.enabled = !muted;
     }
+    _sounds.beep(muted ? 'mute_on.wav' : 'mute_off.wav', speaker: speaker);
+    HapticFeedback.lightImpact();
     notifyListeners();
   }
 
@@ -142,6 +186,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await Helper.setSpeakerphoneOn(speaker);
     } catch (_) {}
+    HapticFeedback.lightImpact();
     notifyListeners();
   }
 
@@ -186,7 +231,6 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
       const Duration(seconds: 10),
       onTimeout: () => throw Exception('Imeshindwa kuunganisha na server'),
     );
-    // SUBSCRIBE ifike server kabla ya hatua inayofuata
     await Future.delayed(const Duration(milliseconds: 400));
   }
 
@@ -199,6 +243,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
         case 'ACCEPTED':
           if (isCaller && phase == CallPhase.outgoing) {
             _ringTimer?.cancel();
+            await _sounds.stopLoop();
             _setPhase(CallPhase.connecting);
             _startConnectTimer();
             await _createPeer();
@@ -341,6 +386,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
     _ringTimer?.cancel();
     _connectTimer?.cancel();
     _stopVibrate();
+    await _sounds.stopLoop();
     _setPhase(CallPhase.ended);
 
     try {
@@ -361,6 +407,7 @@ class CallManager extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await Helper.setSpeakerphoneOn(false);
     } catch (_) {}
+    _sounds.endTone();
 
     Future.delayed(const Duration(milliseconds: 1800), () {
       phase = CallPhase.idle;

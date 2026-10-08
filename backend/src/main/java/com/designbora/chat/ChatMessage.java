@@ -36,6 +36,20 @@ public class ChatMessage {
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
 
+    /** Faili lililoambatishwa (maelezo/mfano) - SI draft */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(name = "attachment_path")
+    private String attachmentPath;
+
+    @Column(name = "attachment_name")
+    private String attachmentName;
+
+    @Column(name = "attachment_size")
+    private Long attachmentSize;
+
+    @Column(name = "attachment_type", length = 120)
+    private String attachmentType;
+
     @PrePersist
     void onCreate() {
         sentAt = LocalDateTime.now();

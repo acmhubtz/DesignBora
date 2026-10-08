@@ -42,12 +42,7 @@ public class ChatHistoryController {
 
         List<ChatController.ChatMessageResponse> messages = chatMessageRepository
                 .findByOrderIdOrderBySentAtAsc(orderId).stream()
-                .map(m -> new ChatController.ChatMessageResponse(
-                        m.getId(),
-                        m.getSender() == null ? null : m.getSender().getId(),
-                        m.getSender() == null ? "" : m.getSender().getFullName(),
-                        m.getMessage(),
-                        m.getSentAt() == null ? "" : m.getSentAt().toString()))
+                .map(ChatAttachmentController::toResponse)
                 .toList();
         return ApiResponse.ok(messages);
     }

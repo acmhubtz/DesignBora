@@ -78,5 +78,11 @@ public class ChatController {
         private final String senderName;
         private final String message;
         private final String sentAt;
+        // Faili (kama lipo): GET /api/orders/{orderId}/messages/{attachmentId}/file
+        private Long attachmentId;
+        private String attachmentName;
+        private Long attachmentSize;
+        private String attachmentType;
+        private String attachmentUrl;
     }
 }

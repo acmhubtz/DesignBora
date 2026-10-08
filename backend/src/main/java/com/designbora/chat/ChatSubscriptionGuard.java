@@ -33,6 +33,7 @@ public class ChatSubscriptionGuard implements ChannelInterceptor {
 
     private static final Pattern CHAT_TOPIC = Pattern.compile("^/topic/chat/(\\d+)$");
     private static final Pattern CALL_TOPIC = Pattern.compile("^/topic/call/(\\d+)$");
+    private static final Pattern INCOMING_TOPIC = Pattern.compile("^/topic/incoming/(\\d+)$");
 
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
@@ -52,6 +53,15 @@ public class ChatSubscriptionGuard implements ChannelInterceptor {
         }
         User user = userRepository.findByPhone(principal.getName())
                 .orElseThrow(() -> new MessagingException("Mtumiaji hajapatikana"));
+
+        // /topic/incoming/{userId}: kila mtu anasikiliza simu zake tu
+        Matcher incoming = INCOMING_TOPIC.matcher(destination);
+        if (incoming.matches()) {
+            if (!user.getId().equals(Long.valueOf(incoming.group(1)))) {
+                throw new MessagingException("Huna ruhusa");
+            }
+            return message;
+        }
 
         Matcher call = CALL_TOPIC.matcher(destination);
         if (call.matches()) {
